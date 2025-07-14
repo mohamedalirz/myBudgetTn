@@ -10,9 +10,9 @@ import {
   Dimensions,
   Alert,
 } from 'react-native';
-import axios from 'axios';
 import { useIsFocused } from '@react-navigation/native';
 import translations from '../backend/translations';
+import { loadData } from '../backend/storage';
 
 const { width } = Dimensions.get('window');
 
@@ -26,62 +26,53 @@ export default function HomeScreen({ navigation, route }) {
   const [currency, setCurrency] = useState({ code: 'TND', symbol: 'DT' });
   const [language, setLanguage] = useState('english');
   const [username, setUsername] = useState('');
-  const [token, setToken] = useState('');
 
   const t = translations[language] || translations['english'];
 
   useEffect(() => {
-    if (route?.params?.token) {
-      setToken(route.params.token);
-    }
     if (route?.params?.username) {
       setUsername(route.params.username);
     }
   }, [route?.params]);
 
   useEffect(() => {
-    if (!token) return;
-    const fetchData = async () => {
+    if (!isFocused) return;
+
+    const loadLocalData = async () => {
       try {
-        const txnsRes = await axios.get('https://mybudgettn-1.onrender.com/api/transactions', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const savedTransactions = txnsRes.data || [];
-
-        const objRes = await axios.get('https://mybudgettn-1.onrender.com/api/objectives', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const savedObjectives = objRes.data || [];
-
+        // Load transactions
+        const savedTransactions = (await loadData('transactions')) || [];
         setTransactions(savedTransactions);
         calculateStats(savedTransactions);
 
-        if (savedObjectives.length > 0) {
-          setObjectives(savedObjectives);
+        // Load objectives
+        const savedObjectives = (await loadData('objectives')) || [];
+        setObjectives(savedObjectives);
+
+        // Load user profile info (language & currency)
+        const profile = (await loadData('profile')) || {};
+        if (profile.language) {
+          const langKey =
+            profile.language === 'ar' ? 'arabic' :
+            profile.language === 'fr' ? 'french' :
+            'english';
+          setLanguage(langKey);
         } else {
-          setObjectives([]);
+          setLanguage('english');
         }
-
-        const profileRes = await axios.get('https://mybudgettn-1.onrender.com/api/profile', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (profileRes.data) {
-          const { language: langData, currency: currencyData } = profileRes.data;
-          if (langData) {
-            const langKey =
-              langData === 'ar' ? 'arabic' : langData === 'fr' ? 'french' : 'english';
-            setLanguage(langKey);
-          }
-          if (currencyData) setCurrency(currencyData);
+        if (profile.currency) {
+          setCurrency(profile.currency);
+        } else {
+          setCurrency({ code: 'TND', symbol: 'DT' });
         }
       } catch (error) {
-        console.error('Failed to fetch data from backend:', error);
+        console.error('Failed to load local data:', error);
         Alert.alert(t.error, t.failedToLoadData);
       }
     };
-    fetchData();
-  }, [isFocused, language, token]);
+
+    loadLocalData();
+  }, [isFocused, language]);
 
   const calculateStats = (txns = []) => {
     const totalBalance = txns.reduce((sum, t) => {
@@ -89,11 +80,13 @@ export default function HomeScreen({ navigation, route }) {
       return sum + (t?.type === 'income' ? amount : -amount);
     }, 0);
     setBalance(totalBalance);
+
     const today = new Date().toISOString().split('T')[0];
     const todayExpenses = txns
       .filter((t) => t?.type === 'expense' && t?.date?.includes(today))
       .reduce((sum, t) => sum + (Number(t?.amount) || 0), 0);
     setDailySpent(todayExpenses);
+
     const incomes = txns
       .filter((t) => t?.type === 'income')
       .reduce((sum, t) => sum + (Number(t?.amount) || 0), 0);
@@ -309,6 +302,7 @@ export default function HomeScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
+  // your existing styles here, unchanged from your original code
   safeContainer: {
     flex: 1,
     backgroundColor: '#F5F9F5',

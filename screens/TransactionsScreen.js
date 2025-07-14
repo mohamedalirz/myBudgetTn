@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import { View, Text, StyleSheet, FlatList, SafeAreaView, Pressable } from 'react-native'
-import { loadData } from '../backend/storage'
 import translations from '../backend/translations'
 
 export default function TransactionsScreen({ navigation }) {
@@ -11,30 +10,38 @@ export default function TransactionsScreen({ navigation }) {
   const t = translations[language] || translations.english
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', async () => {
-      try {
-        const response = await fetch('https://mybudgettn-1.onrender.com/api/transactions', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
+    if (navigation.isFocused()) {
+      setTimeout(() => {
+        setLanguage('english')
+        setTransactions([
+          {
+            id: 1,
+            category: 'food',
+            description: 'Grocery shopping',
+            date: new Date().toISOString(),
+            amount: 45.5,
+            type: 'expense',
           },
-        })
-        const data = await response.json()
-
-        const lang = await loadData('language')
-        if (lang === 'ar') setLanguage('arabic')
-        else if (lang === 'fr') setLanguage('french')
-        else setLanguage('english')
-
-        setTransactions(Array.isArray(data) ? data : [])
-      } catch (error) {
-        console.error('Failed to load transactions:', error)
-        setTransactions([])
-      } finally {
+          {
+            id: 2,
+            category: 'salary',
+            description: 'Monthly salary',
+            date: new Date().toISOString(),
+            amount: 1200,
+            type: 'income',
+          },
+          {
+            id: 3,
+            category: 'transport',
+            description: 'Bus ticket',
+            date: new Date().toISOString(),
+            amount: 3,
+            type: 'expense',
+          },
+        ])
         setLoading(false)
-      }
-    })
-    return unsubscribe
+      }, 300)
+    }
   }, [navigation])
 
   const renderTransaction = ({ item }) => {

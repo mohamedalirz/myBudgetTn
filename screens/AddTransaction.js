@@ -13,10 +13,8 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
-import { loadData } from '../backend/storage';
+import { loadData, saveData } from '../backend/storage';
 import translations from '../backend/translations';
-
-const API_URL = 'https://mybudgettn-1.onrender.com/api';
 
 const AddTransaction = ({ navigation }) => {
   const [amount, setAmount] = useState('');
@@ -26,20 +24,17 @@ const AddTransaction = ({ navigation }) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [transactionType, setTransactionType] = useState('expense');
   const [language, setLanguage] = useState('english');
-  const [token, setToken] = useState(null);
 
   const t = translations[language] || translations['english'];
 
   useEffect(() => {
-    const loadLangAndToken = async () => {
+    const loadLang = async () => {
       const lang = await loadData('language');
       if (lang === 'ar') setLanguage('arabic');
       else if (lang === 'fr') setLanguage('french');
       else setLanguage('english');
-      const storedToken = await loadData('token');
-      if (storedToken) setToken(storedToken);
     };
-    loadLangAndToken();
+    loadLang();
   }, []);
 
   const onChangeDate = (event, selectedDate) => {
@@ -54,27 +49,20 @@ const AddTransaction = ({ navigation }) => {
       Alert.alert(t.error, t.load_error);
       return;
     }
+
     const newTransaction = {
+      id: Date.now().toString(),
       amount: numericAmount,
       description,
       category,
       date: date.toISOString(),
-      type: transactionType
+      type: transactionType,
     };
+
     try {
-      const response = await fetch(`${API_URL}/transactions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify(newTransaction)
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        Alert.alert(t.error, errorData.message || t.load_error);
-        return;
-      }
+      const existingTransactions = (await loadData('transactions')) || [];
+      existingTransactions.push(newTransaction);
+      await saveData('transactions', existingTransactions);
       navigation.goBack();
     } catch (error) {
       Alert.alert(t.error, t.load_error);
@@ -83,7 +71,10 @@ const AddTransaction = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
+      >
         <ScrollView contentContainerStyle={styles.scrollContainer}>
           <View style={styles.header}>
             <Pressable onPress={() => navigation.goBack()}>

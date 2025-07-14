@@ -11,29 +11,44 @@ export default function ObjectivesScreen({ navigation }) {
   const t = translations[language] || translations['english']
 
   useEffect(() => {
-    const loadObjectives = async () => {
-      try {
-        const response = await fetch('https://mybudgettn-1.onrender.com/api/objectives')
-        if (!response.ok) throw new Error('Failed to fetch objectives')
-        const data = await response.json()
-        setObjectives(data)
-        const langResponse = await fetch('https://mybudgettn-1.onrender.com/api/user-language')
-        if (langResponse.ok) {
-          const langData = await langResponse.json()
-          if (langData === 'ar') setLanguage('arabic')
-          else if (langData === 'fr') setLanguage('french')
-          else setLanguage('english')
-        }
-      } catch (error) {
-        console.error(error)
-      }
+    if (isFocused) {
+      setTimeout(() => {
+        setLanguage('english')
+      }, 500)
     }
-    if (isFocused) loadObjectives()
   }, [isFocused])
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (navigation.getState().routes.some(r => r.name === 'EditObjective')) {
+        const route = navigation.getState().routes.find(r => r.name === 'EditObjective')
+        const updatedGoal = route.params?.updatedGoal
+        if (updatedGoal) {
+          setObjectives(prev => {
+            const idx = prev.findIndex(g => g.id === updatedGoal.id)
+            if (idx >= 0) {
+              const copy = [...prev]
+              copy[idx] = updatedGoal
+              return copy
+            } else {
+              return [...prev, updatedGoal]
+            }
+          })
+          navigation.setParams({ updatedGoal: null })
+        }
+      }
+    })
+    return unsubscribe
+  }, [navigation])
 
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
+        {objectives.length === 0 && (
+          <Text style={{ textAlign: 'center', marginTop: 50, color: '#666' }}>
+            {t.noGoals || 'No financial goals yet.'}
+          </Text>
+        )}
         {objectives.map((goal) => (
           <Pressable 
             key={goal.id} 
@@ -60,9 +75,14 @@ export default function ObjectivesScreen({ navigation }) {
       </ScrollView>
       <Pressable
         style={styles.addButton}
-        onPress={() => navigation.navigate('AddObjective')}
+        onPress={() => navigation.navigate('AddObjective', {
+          onAdd: (newGoal) => {
+            setObjectives(prev => [...prev, newGoal])
+            navigation.goBack()
+          }
+        })}
       >
-        <Text style={styles.addButtonText}>+ {t.addGoal}</Text>
+        <Text style={styles.addButtonText}>+ {t.addGoal || 'Add Goal'}</Text>
       </Pressable>
     </View>
   )

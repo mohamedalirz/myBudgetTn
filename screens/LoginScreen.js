@@ -3,9 +3,6 @@ import {
   View, Text, Image, TextInput, Pressable, StyleSheet, Alert, ActivityIndicator,
   KeyboardAvoidingView, ScrollView, Platform, TouchableWithoutFeedback, Keyboard
 } from 'react-native';
-import axios from 'axios';
-
-const API_URL = 'https://mybudgettn-1.onrender.com/api'; 
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -17,12 +14,32 @@ export default function LoginScreen({ navigation }) {
 
   const validateEmail = (email) => /\S+@\S+\.\S+/.test(email);
 
-  const handleAuth = async () => {
+  const handleAuth = () => {
     const trimmedEmail = email.trim();
     const trimmedPassword = password.trim();
     const trimmedUsername = username.trim();
 
-    if (!trimmedEmail || (!isLogin && !trimmedPassword) || (!isLogin && !trimmedUsername)) {
+    if (forgotPasswordMode) {
+      // Forgot password local simulation
+      if (!trimmedEmail) {
+        Alert.alert('Error', 'Please enter your email to reset password');
+        return;
+      }
+      if (!validateEmail(trimmedEmail)) {
+        Alert.alert('Error', 'Please enter a valid email address');
+        return;
+      }
+      setLoading(true);
+      setTimeout(() => {
+        setLoading(false);
+        Alert.alert('Success', `Password reset email sent to ${trimmedEmail}!`);
+        setForgotPasswordMode(false);
+      }, 1500);
+      return;
+    }
+
+    // Login or Sign up validation
+    if (!trimmedEmail || (!isLogin && (!trimmedPassword || !trimmedUsername)) || (isLogin && !trimmedPassword)) {
       Alert.alert('Error', 'Please fill all required fields');
       return;
     }
@@ -32,38 +49,13 @@ export default function LoginScreen({ navigation }) {
     }
 
     setLoading(true);
-    try {
-      let url = '';
-      let payload = {};
-
-      if (forgotPasswordMode) {
-        url = `${API_URL}/forgot-password`;
-        payload = { email: trimmedEmail };
-      } else if (isLogin) {
-        url = `${API_URL}/login`;
-        payload = { email: trimmedEmail, password: trimmedPassword };
-      } else {
-        url = `${API_URL}/register`;
-        payload = { email: trimmedEmail, password: trimmedPassword, username: trimmedUsername };
-      }
-
-      const res = await axios.post(url, payload);
-
-      if (res.data) {
-        if (forgotPasswordMode) {
-          Alert.alert('Success', 'Password reset email sent!');
-          setForgotPasswordMode(false);
-        } else {
-          Alert.alert('Success', isLogin ? 'Logged in!' : 'Registered successfully!');
-          navigation.replace('Home', { username: res.data.user?.username || trimmedUsername });
-        }
-      }
-    } catch (error) {
-      console.error(error);
-      Alert.alert('Error', error.response?.data?.message || 'Something went wrong.');
-    } finally {
+    // Simulate login/signup success after delay
+    setTimeout(() => {
       setLoading(false);
-    }
+      Alert.alert('Success', isLogin ? 'Logged in!' : 'Registered successfully!');
+      // Navigate to Home with username param (simulate)
+      navigation.replace('Home', { username: trimmedUsername || 'User' });
+    }, 1500);
   };
 
   return (
@@ -75,6 +67,7 @@ export default function LoginScreen({ navigation }) {
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
           <View style={styles.loginLogo}>
+            {/* Replace with your logo or image */}
             <Image source={require("../assets/logo.png")} style={styles.logoApp} />
             <View style={styles.headText}>
               <Text style={styles.h1}>MyBudgetTN</Text>

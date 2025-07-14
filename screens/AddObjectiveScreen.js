@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { View, Text, StyleSheet, TextInput, Pressable, Alert } from 'react-native'
-import { loadData } from '../backend/storage'
+import { loadData, saveData } from '../backend/storage' // make sure you have saveData implemented
 import translations from '../backend/translations'
 
 export default function AddObjectiveScreen({ navigation }) {
@@ -34,21 +34,23 @@ export default function AddObjectiveScreen({ navigation }) {
     }
 
     try {
-      const response = await fetch('https://mybudgettn-1.onrender.com/api/objectives', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name,
-          target: parseFloat(target),
-          current: parseFloat(current) || 0,
-        }),
-      })
+      // Load existing objectives
+      const storedObjectives = await loadData('objectives')
+      const objectives = storedObjectives ? JSON.parse(storedObjectives) : []
 
-      if (!response.ok) {
-        throw new Error('Failed to save objective')
+      // Create new objective object
+      const newObjective = {
+        id: Date.now().toString(), // simple unique id
+        name,
+        target: parseFloat(target),
+        current: parseFloat(current) || 0,
       }
+
+      // Append new objective
+      objectives.push(newObjective)
+
+      // Save back to local storage
+      await saveData('objectives', JSON.stringify(objectives))
 
       navigation.goBack()
     } catch (error) {
