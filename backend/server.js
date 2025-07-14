@@ -19,7 +19,7 @@ mongoose.connect(process.env.MONGO_URI, {
 app.get('/', (req, res) => res.send('API Running'));
 
 const userRoutes = require('./routes/userRoutes');
-const transactionRoutes = require('./routes/transactionRoutes');
+const transactionRoutes = require('./routes/transactions');
 
 app.use('/api', userRoutes);
 app.use('/api/transactions', transactionRoutes);
