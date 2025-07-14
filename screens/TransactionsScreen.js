@@ -13,7 +13,7 @@ export default function TransactionsScreen({ navigation }) {
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', async () => {
       try {
-        const response = await fetch('https://your-backend-api.com/api/transactions', {
+        const response = await fetch('https://mybudgettn-1.onrender.com/api/transactions', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',

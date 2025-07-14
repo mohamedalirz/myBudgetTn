@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import axios from 'axios';
 
-const API_URL = 'http://10.0.2.2:5000/api/auth'; // Change this to your deployed backend URL when ready
+const API_URL = 'https://mybudgettn-1.onrender.com/api/auth'; 
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');

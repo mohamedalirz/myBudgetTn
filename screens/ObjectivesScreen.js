@@ -13,11 +13,11 @@ export default function ObjectivesScreen({ navigation }) {
   useEffect(() => {
     const loadObjectives = async () => {
       try {
-        const response = await fetch('https://your-backend-api.com/api/objectives')
+        const response = await fetch('https://mybudgettn-1.onrender.com/api/objectives')
         if (!response.ok) throw new Error('Failed to fetch objectives')
         const data = await response.json()
         setObjectives(data)
-        const langResponse = await fetch('https://your-backend-api.com/api/user-language')
+        const langResponse = await fetch('https://mybudgettn-1.onrender.com/api/user-language')
         if (langResponse.ok) {
           const langData = await langResponse.json()
           if (langData === 'ar') setLanguage('arabic')

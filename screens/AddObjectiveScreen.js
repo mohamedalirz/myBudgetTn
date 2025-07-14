@@ -34,7 +34,7 @@ export default function AddObjectiveScreen({ navigation }) {
     }
 
     try {
-      const response = await fetch('https://your-backend-api.com/api/objectives', {
+      const response = await fetch('https://mybudgettn-1.onrender.com/api/objectives', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

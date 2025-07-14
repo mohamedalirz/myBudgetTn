@@ -16,7 +16,7 @@ import { Picker } from '@react-native-picker/picker';
 import { loadData } from '../backend/storage';
 import translations from '../backend/translations';
 
-const API_URL = 'https://your-api-url.com/api';
+const API_URL = 'https://mybudgettn-1.onrender.com/api';
 
 const AddTransaction = ({ navigation }) => {
   const [amount, setAmount] = useState('');

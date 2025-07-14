@@ -43,12 +43,12 @@ export default function HomeScreen({ navigation, route }) {
     if (!token) return;
     const fetchData = async () => {
       try {
-        const txnsRes = await axios.get('https://YOUR_BACKEND_URL/api/transactions', {
+        const txnsRes = await axios.get('https://mybudgettn-1.onrender.com/api/transactions', {
           headers: { Authorization: `Bearer ${token}` },
         });
         const savedTransactions = txnsRes.data || [];
 
-        const objRes = await axios.get('https://YOUR_BACKEND_URL/api/objectives', {
+        const objRes = await axios.get('https://mybudgettn-1.onrender.com/api/objectives', {
           headers: { Authorization: `Bearer ${token}` },
         });
         const savedObjectives = objRes.data || [];
@@ -62,7 +62,7 @@ export default function HomeScreen({ navigation, route }) {
           setObjectives([]);
         }
 
-        const profileRes = await axios.get('https://YOUR_BACKEND_URL/api/profile', {
+        const profileRes = await axios.get('https://mybudgettn-1.onrender.com/api/profile', {
           headers: { Authorization: `Bearer ${token}` },
         });
 
