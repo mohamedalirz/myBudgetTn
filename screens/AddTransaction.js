@@ -13,8 +13,10 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
-import { saveData, loadData } from '../backend/storage';
+import { loadData } from '../backend/storage';
 import translations from '../backend/translations';
+
+const API_URL = 'https://your-api-url.com/api';
 
 const AddTransaction = ({ navigation }) => {
   const [amount, setAmount] = useState('');
@@ -24,17 +26,20 @@ const AddTransaction = ({ navigation }) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [transactionType, setTransactionType] = useState('expense');
   const [language, setLanguage] = useState('english');
+  const [token, setToken] = useState(null);
 
   const t = translations[language] || translations['english'];
 
   useEffect(() => {
-    const loadLang = async () => {
+    const loadLangAndToken = async () => {
       const lang = await loadData('language');
       if (lang === 'ar') setLanguage('arabic');
       else if (lang === 'fr') setLanguage('french');
       else setLanguage('english');
+      const storedToken = await loadData('token');
+      if (storedToken) setToken(storedToken);
     };
-    loadLang();
+    loadLangAndToken();
   }, []);
 
   const onChangeDate = (event, selectedDate) => {
@@ -49,34 +54,36 @@ const AddTransaction = ({ navigation }) => {
       Alert.alert(t.error, t.load_error);
       return;
     }
-
+    const newTransaction = {
+      amount: numericAmount,
+      description,
+      category,
+      date: date.toISOString(),
+      type: transactionType
+    };
     try {
-      const savedTransactions = await loadData('transactions');
-      const transactions = Array.isArray(savedTransactions) ? savedTransactions : [];
-
-      const newTransaction = {
-        id: Date.now(),
-        amount: numericAmount,
-        description,
-        category,
-        date: date.toISOString(),
-        type: transactionType
-      };
-
-      await saveData('transactions', [...transactions, newTransaction]);
+      const response = await fetch(`${API_URL}/transactions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(newTransaction)
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        Alert.alert(t.error, errorData.message || t.load_error);
+        return;
+      }
       navigation.goBack();
     } catch (error) {
-      console.error("Failed to save transaction:", error);
-      alert(t.load_error);
+      Alert.alert(t.error, t.load_error);
     }
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}
-      >
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
         <ScrollView contentContainerStyle={styles.scrollContainer}>
           <View style={styles.header}>
             <Pressable onPress={() => navigation.goBack()}>
@@ -85,38 +92,24 @@ const AddTransaction = ({ navigation }) => {
             <Text style={styles.headerTitle}>{t.addNew}</Text>
             <View style={{ width: 30 }} />
           </View>
-
           <View style={styles.typeSelector}>
             <Pressable
-              style={[
-                styles.typeButton,
-                transactionType === 'expense' && styles.typeButtonActive
-              ]}
+              style={[styles.typeButton, transactionType === 'expense' && styles.typeButtonActive]}
               onPress={() => setTransactionType('expense')}
             >
-              <Text style={[
-                styles.typeButtonText,
-                transactionType === 'expense' && styles.typeButtonTextActive
-              ]}>
+              <Text style={[styles.typeButtonText, transactionType === 'expense' && styles.typeButtonTextActive]}>
                 {t.expenses}
               </Text>
             </Pressable>
             <Pressable
-              style={[
-                styles.typeButton,
-                transactionType === 'income' && styles.typeButtonActive
-              ]}
+              style={[styles.typeButton, transactionType === 'income' && styles.typeButtonActive]}
               onPress={() => setTransactionType('income')}
             >
-              <Text style={[
-                styles.typeButtonText,
-                transactionType === 'income' && styles.typeButtonTextActive
-              ]}>
+              <Text style={[styles.typeButtonText, transactionType === 'income' && styles.typeButtonTextActive]}>
                 {t.income}
               </Text>
             </Pressable>
           </View>
-
           <View style={styles.amountContainer}>
             <Text style={styles.currencySymbol}>DT</Text>
             <TextInput
@@ -129,7 +122,6 @@ const AddTransaction = ({ navigation }) => {
               autoFocus
             />
           </View>
-
           <View style={styles.inputContainer}>
             <Text style={styles.label}>{t.recentTransactions}</Text>
             <TextInput
@@ -139,7 +131,6 @@ const AddTransaction = ({ navigation }) => {
               onChangeText={setDescription}
             />
           </View>
-
           <View style={styles.inputContainer}>
             <Text style={styles.label}>{t.transaction}</Text>
             <View style={styles.pickerContainer}>
@@ -158,16 +149,10 @@ const AddTransaction = ({ navigation }) => {
               </Picker>
             </View>
           </View>
-
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Date</Text>
-            <Pressable
-              style={styles.dateInput}
-              onPress={() => setShowDatePicker(true)}
-            >
-              <Text style={styles.dateText}>
-                {date.toLocaleDateString()}
-              </Text>
+            <Pressable style={styles.dateInput} onPress={() => setShowDatePicker(true)}>
+              <Text style={styles.dateText}>{date.toLocaleDateString()}</Text>
             </Pressable>
             {showDatePicker && (
               <DateTimePicker
@@ -178,21 +163,15 @@ const AddTransaction = ({ navigation }) => {
               />
             )}
           </View>
-
-          <Pressable
-            style={styles.submitButton}
-            onPress={handleSubmit}
-            disabled={!amount}
-          >
-            <Text style={styles.submitButtonText}>
-              {t.transaction}
-            </Text>
+          <Pressable style={styles.submitButton} onPress={handleSubmit} disabled={!amount}>
+            <Text style={styles.submitButtonText}>{t.transaction}</Text>
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
+
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,

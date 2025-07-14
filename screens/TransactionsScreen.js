@@ -1,38 +1,45 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, SafeAreaView, Pressable } from 'react-native';
-import { loadData } from '../backend/storage';
-import translations from '../backend/translations';
+import React, { useState, useEffect } from 'react'
+import { View, Text, StyleSheet, FlatList, SafeAreaView, Pressable } from 'react-native'
+import { loadData } from '../backend/storage'
+import translations from '../backend/translations'
 
 export default function TransactionsScreen({ navigation }) {
-  const [transactions, setTransactions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [language, setLanguage] = useState('english');
+  const [transactions, setTransactions] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [language, setLanguage] = useState('english')
 
-  const t = translations[language] || translations.english;
+  const t = translations[language] || translations.english
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', async () => {
       try {
-        const loadedTransactions = await loadData('transactions');
-        const lang = await loadData('language');
-        if (lang === 'ar') setLanguage('arabic');
-        else if (lang === 'fr') setLanguage('french');
-        else setLanguage('english');
+        const response = await fetch('https://your-backend-api.com/api/transactions', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+        const data = await response.json()
 
-        setTransactions(Array.isArray(loadedTransactions) ? loadedTransactions : []);
+        const lang = await loadData('language')
+        if (lang === 'ar') setLanguage('arabic')
+        else if (lang === 'fr') setLanguage('french')
+        else setLanguage('english')
+
+        setTransactions(Array.isArray(data) ? data : [])
       } catch (error) {
-        console.error('Failed to load transactions:', error);
+        console.error('Failed to load transactions:', error)
+        setTransactions([])
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    });
-    return unsubscribe;
-  }, [navigation]);
+    })
+    return unsubscribe
+  }, [navigation])
 
   const renderTransaction = ({ item }) => {
-    const amount = parseFloat(item.amount) || 0;
-    const isIncome = item.type === 'income';
-
+    const amount = parseFloat(item.amount) || 0
+    const isIncome = item.type === 'income'
     return (
       <View style={styles.transactionItem}>
         <View style={styles.transactionLeft}>
@@ -46,15 +53,12 @@ export default function TransactionsScreen({ navigation }) {
             {new Date(item.date).toLocaleDateString()}
           </Text>
         </View>
-        <Text style={[
-          styles.transactionAmount,
-          isIncome ? styles.income : styles.expense
-        ]}>
+        <Text style={[styles.transactionAmount, isIncome ? styles.income : styles.expense]}>
           {isIncome ? '+' : '-'}{amount.toFixed(2)} DT
         </Text>
       </View>
-    );
-  };
+    )
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -79,9 +83,8 @@ export default function TransactionsScreen({ navigation }) {
         />
       )}
     </SafeAreaView>
-  );
+  )
 }
-
 
 const styles = StyleSheet.create({
   container: {
@@ -155,4 +158,4 @@ const styles = StyleSheet.create({
     color: '#9E9E9E',
     fontSize: 16,
   },
-});
+})

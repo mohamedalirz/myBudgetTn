@@ -10,7 +10,7 @@ import {
   Dimensions,
   Alert,
 } from 'react-native';
-import { loadData, saveData, loadUser } from '../backend/storage';
+import axios from 'axios';
 import { useIsFocused } from '@react-navigation/native';
 import translations from '../backend/translations';
 
@@ -26,64 +26,62 @@ export default function HomeScreen({ navigation, route }) {
   const [currency, setCurrency] = useState({ code: 'TND', symbol: 'DT' });
   const [language, setLanguage] = useState('english');
   const [username, setUsername] = useState('');
+  const [token, setToken] = useState('');
 
   const t = translations[language] || translations['english'];
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [savedTransactions, savedObjectives] = await Promise.all([
-          loadData('transactions'),
-          loadData('objectives'),
-        ]);
-
-        const languageData = await loadData('language');
-        const currencyData = await loadData('currency');
-
-        if (languageData) {
-          const langKey =
-            languageData === 'ar'
-              ? 'arabic'
-              : languageData === 'fr'
-              ? 'french'
-              : 'english';
-          setLanguage(langKey);
-        }
-
-        if (currencyData) setCurrency(currencyData);
-
-        if (Array.isArray(savedTransactions)) {
-          setTransactions(savedTransactions);
-          calculateStats(savedTransactions);
-        }
-
-        if (Array.isArray(savedObjectives)) {
-          setObjectives(savedObjectives);
-        } else {
-
-          await saveData('objectives', defaultObjectives);
-          setObjectives(defaultObjectives);
-        }
-      } catch (error) {
-        console.error('Failed to load data:', error);
-      }
-    };
-
-    fetchData();
-  }, [isFocused, language]);
+    if (route?.params?.token) {
+      setToken(route.params.token);
+    }
+    if (route?.params?.username) {
+      setUsername(route.params.username);
+    }
+  }, [route?.params]);
 
   useEffect(() => {
-    // Load username either from navigation param or storage
-    const fetchUsername = async () => {
-      if (route?.params?.username) {
-        setUsername(route.params.username);
-      } else {
-        const user = await loadUser();
-        if (user?.username) setUsername(user.username);
+    if (!token) return;
+    const fetchData = async () => {
+      try {
+        const txnsRes = await axios.get('https://YOUR_BACKEND_URL/api/transactions', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const savedTransactions = txnsRes.data || [];
+
+        const objRes = await axios.get('https://YOUR_BACKEND_URL/api/objectives', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const savedObjectives = objRes.data || [];
+
+        setTransactions(savedTransactions);
+        calculateStats(savedTransactions);
+
+        if (savedObjectives.length > 0) {
+          setObjectives(savedObjectives);
+        } else {
+          setObjectives([]);
+        }
+
+        const profileRes = await axios.get('https://YOUR_BACKEND_URL/api/profile', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (profileRes.data) {
+          const { language: langData, currency: currencyData } = profileRes.data;
+          if (langData) {
+            const langKey =
+              langData === 'ar' ? 'arabic' : langData === 'fr' ? 'french' : 'english';
+            setLanguage(langKey);
+          }
+          if (currencyData) setCurrency(currencyData);
+        }
+      } catch (error) {
+        console.error('Failed to fetch data from backend:', error);
+        Alert.alert(t.error, t.failedToLoadData);
       }
     };
-    fetchUsername();
-  }, [route?.params]);
+    fetchData();
+  }, [isFocused, language, token]);
 
   const calculateStats = (txns = []) => {
     const totalBalance = txns.reduce((sum, t) => {
@@ -91,13 +89,11 @@ export default function HomeScreen({ navigation, route }) {
       return sum + (t?.type === 'income' ? amount : -amount);
     }, 0);
     setBalance(totalBalance);
-
     const today = new Date().toISOString().split('T')[0];
     const todayExpenses = txns
       .filter((t) => t?.type === 'expense' && t?.date?.includes(today))
       .reduce((sum, t) => sum + (Number(t?.amount) || 0), 0);
     setDailySpent(todayExpenses);
-
     const incomes = txns
       .filter((t) => t?.type === 'income')
       .reduce((sum, t) => sum + (Number(t?.amount) || 0), 0);
@@ -128,20 +124,17 @@ export default function HomeScreen({ navigation, route }) {
           </Pressable>
         </View>
         {objectives.slice(0, 2).map((goal) => (
-          <View key={goal.id} style={styles.objectiveItem}>
+          <View key={goal._id || goal.id} style={styles.objectiveItem}>
             <View style={styles.objectiveTextContainer}>
               <Text style={styles.objectiveName}>{goal.name}</Text>
               <Text style={styles.objectiveAmount}>
-                {formatAmount(goal.current)} / {formatAmount(goal.target)}{' '}
-                {currency.symbol}
+                {formatAmount(goal.current)} / {formatAmount(goal.target)} {currency.symbol}
               </Text>
             </View>
             <View
               style={[
                 styles.progressContainer,
-                {
-                  backgroundColor: '#E8F5E9',
-                },
+                { backgroundColor: '#E8F5E9' },
               ]}
             >
               <View
@@ -315,9 +308,6 @@ export default function HomeScreen({ navigation, route }) {
   );
 }
 
-// (Styles unchanged)
-
-
 const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
@@ -353,14 +343,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#2E4E2E',
-  },
-  notificationButton: {
-    padding: 10,
-  },
-  notificationIcon: {
-    width: 24,
-    height: 24,
-    backgroundColor: '#4CAF50',
   },
   card: {
     backgroundColor: '#FFFFFF',
@@ -580,5 +562,9 @@ const styles = StyleSheet.create({
   objectiveAmount: {
     fontSize: 14,
     color: '#6B8E6B',
+  },
+  progressBar: {
+    height: 8,
+    borderRadius: 4,
   },
 });

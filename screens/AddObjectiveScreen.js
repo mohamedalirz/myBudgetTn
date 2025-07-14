@@ -1,61 +1,64 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, Alert } from 'react-native';
-import { loadData, saveData } from '../backend/storage';
-import translations from '../backend/translations';
+import React, { useState, useEffect } from 'react'
+import { View, Text, StyleSheet, TextInput, Pressable, Alert } from 'react-native'
+import { loadData } from '../backend/storage'
+import translations from '../backend/translations'
 
 export default function AddObjectiveScreen({ navigation }) {
-  const [name, setName] = useState('');
-  const [target, setTarget] = useState('');
-  const [current, setCurrent] = useState('');
-  const [language, setLanguage] = useState('english');
+  const [name, setName] = useState('')
+  const [target, setTarget] = useState('')
+  const [current, setCurrent] = useState('')
+  const [language, setLanguage] = useState('english')
 
-  const t = translations[language] || translations['english'];
+  const t = translations[language] || translations['english']
 
   useEffect(() => {
     const loadLanguage = async () => {
-      const languageData = await loadData('language');
+      const languageData = await loadData('language')
       if (languageData) {
         const langKey =
           languageData === 'ar'
             ? 'arabic'
             : languageData === 'fr'
             ? 'french'
-            : 'english';
-        setLanguage(langKey);
+            : 'english'
+        setLanguage(langKey)
       }
-    };
-    loadLanguage();
-  }, []);
+    }
+    loadLanguage()
+  }, [])
 
   const handleSave = async () => {
     if (!name || !target) {
-      Alert.alert(t.error, t['Please fill all required fields'] || 'Please fill all required fields');
-      return;
+      Alert.alert(t.error, t['Please fill all required fields'] || 'Please fill all required fields')
+      return
     }
 
     try {
-      const newObjective = {
-        id: Date.now(),
-        name,
-        target: parseFloat(target),
-        current: parseFloat(current) || 0,
-      };
+      const response = await fetch('https://your-backend-api.com/api/objectives', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name,
+          target: parseFloat(target),
+          current: parseFloat(current) || 0,
+        }),
+      })
 
-      const existingObjectives = (await loadData('objectives')) || [];
-      const updatedObjectives = [...existingObjectives, newObjective];
+      if (!response.ok) {
+        throw new Error('Failed to save objective')
+      }
 
-      await saveData('objectives', updatedObjectives);
-      navigation.goBack();
+      navigation.goBack()
     } catch (error) {
-      Alert.alert(t.error, t['Failed to save objective'] || 'Failed to save objective');
-      console.error(error);
+      Alert.alert(t.error, t['Failed to save objective'] || 'Failed to save objective')
     }
-  };
+  }
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{t.addNew} {t.goal}</Text>
-
       <Text style={styles.label}>{t.goal} {t.name || 'Name'}*</Text>
       <TextInput
         style={styles.input}
@@ -63,7 +66,6 @@ export default function AddObjectiveScreen({ navigation }) {
         onChangeText={setName}
         placeholder={t.vacation || 'Vacation'}
       />
-
       <Text style={styles.label}>{t.targetAmount || 'Target Amount'} (DT)*</Text>
       <TextInput
         style={styles.input}
@@ -72,7 +74,6 @@ export default function AddObjectiveScreen({ navigation }) {
         placeholder="3000"
         keyboardType="numeric"
       />
-
       <Text style={styles.label}>{t.currentAmount || 'Current Amount'} (DT)</Text>
       <TextInput
         style={styles.input}
@@ -81,12 +82,11 @@ export default function AddObjectiveScreen({ navigation }) {
         placeholder="500"
         keyboardType="numeric"
       />
-
       <Pressable style={styles.saveButton} onPress={handleSave}>
         <Text style={styles.saveButtonText}>{t.save || 'Save Goal'}</Text>
       </Pressable>
     </View>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -128,4 +128,4 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
-});
+})

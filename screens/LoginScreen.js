@@ -1,28 +1,28 @@
 import React, { useState } from 'react';
-import { 
+import {
   View, Text, Image, TextInput, Pressable, StyleSheet, Alert, ActivityIndicator,
   KeyboardAvoidingView, ScrollView, Platform, TouchableWithoutFeedback, Keyboard
 } from 'react-native';
-import { saveUser, loadUser } from '../backend/storage';
+import axios from 'axios';
+
+const API_URL = 'http://10.0.2.2:5000/api/auth'; // Change this to your deployed backend URL when ready
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
-  const [username, setUsername] = useState('');  // New username state
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [isLogin, setIsLogin] = useState(true); // toggle between login and sign-up
+  const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
 
-  const validateEmail = (email) => {
-    const re = /\S+@\S+\.\S+/;
-    return re.test(email);
-  };
+  const validateEmail = (email) => /\S+@\S+\.\S+/.test(email);
 
   const handleAuth = async () => {
     const trimmedEmail = email.trim();
     const trimmedPassword = password.trim();
     const trimmedUsername = username.trim();
 
-    if (!trimmedEmail || !trimmedPassword || (!isLogin && !trimmedUsername)) {
+    if (!trimmedEmail || (!isLogin && !trimmedPassword) || (!isLogin && !trimmedUsername)) {
       Alert.alert('Error', 'Please fill all required fields');
       return;
     }
@@ -33,46 +33,47 @@ export default function LoginScreen({ navigation }) {
 
     setLoading(true);
     try {
-      const existingUser = await loadUser();
+      let url = '';
+      let payload = {};
 
-      if (isLogin) {
-        // Login
-        if (existingUser && existingUser.email === trimmedEmail && existingUser.password === trimmedPassword) {
-          Alert.alert('Success', 'Logged in successfully');
-          navigation.replace('Home', { username: existingUser.username }); // pass username to Home screen
-        } else {
-          Alert.alert('Error', 'Invalid email or password');
-        }
+      if (forgotPasswordMode) {
+        url = `${API_URL}/forgot-password`;
+        payload = { email: trimmedEmail };
+      } else if (isLogin) {
+        url = `${API_URL}/login`;
+        payload = { email: trimmedEmail, password: trimmedPassword };
       } else {
-        // Sign up
-        if (existingUser) {
-          Alert.alert('Error', 'User already exists');
+        url = `${API_URL}/register`;
+        payload = { email: trimmedEmail, password: trimmedPassword, username: trimmedUsername };
+      }
+
+      const res = await axios.post(url, payload);
+
+      if (res.data) {
+        if (forgotPasswordMode) {
+          Alert.alert('Success', 'Password reset email sent!');
+          setForgotPasswordMode(false);
         } else {
-          await saveUser({ email: trimmedEmail, username: trimmedUsername, password: trimmedPassword });
-          Alert.alert('Success', 'User registered successfully. You can now login.');
-          setIsLogin(true);
-          setPassword('');
-          setUsername('');
+          Alert.alert('Success', isLogin ? 'Logged in!' : 'Registered successfully!');
+          navigation.replace('Home', { username: res.data.user?.username || trimmedUsername });
         }
       }
     } catch (error) {
-      Alert.alert('Error', 'Something went wrong. Please try again.');
       console.error(error);
+      Alert.alert('Error', error.response?.data?.message || 'Something went wrong.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: '#fff' }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0} // adjust offset if needed
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <ScrollView
-          contentContainerStyle={styles.container}
-          keyboardShouldPersistTaps="handled"
-        >
+        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
           <View style={styles.loginLogo}>
             <Image source={require("../assets/logo.png")} style={styles.logoApp} />
             <View style={styles.headText}>
@@ -82,10 +83,10 @@ export default function LoginScreen({ navigation }) {
           </View>
 
           <View style={styles.form}>
-            {!isLogin && (
+            {!isLogin && !forgotPasswordMode && (
               <TextInput
                 style={styles.input}
-                placeholder="Enter your username"
+                placeholder="Username"
                 value={username}
                 onChangeText={setUsername}
                 editable={!loading}
@@ -93,7 +94,7 @@ export default function LoginScreen({ navigation }) {
             )}
             <TextInput
               style={styles.input}
-              placeholder="Enter your email"
+              placeholder="Email"
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
@@ -101,14 +102,16 @@ export default function LoginScreen({ navigation }) {
               onChangeText={setEmail}
               editable={!loading}
             />
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your password"
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-              editable={!loading}
-            />
+            {!forgotPasswordMode && (
+              <TextInput
+                style={styles.input}
+                placeholder="Password"
+                secureTextEntry
+                value={password}
+                onChangeText={setPassword}
+                editable={!loading}
+              />
+            )}
 
             <Pressable
               style={[styles.btn, loading && { opacity: 0.6 }]}
@@ -118,15 +121,35 @@ export default function LoginScreen({ navigation }) {
               {loading ? (
                 <ActivityIndicator color="white" />
               ) : (
-                <Text style={styles.btnText}>{isLogin ? 'Login' : 'Sign Up'}</Text>
+                <Text style={styles.btnText}>
+                  {forgotPasswordMode
+                    ? 'Reset Password'
+                    : isLogin
+                    ? 'Login'
+                    : 'Sign Up'}
+                </Text>
               )}
             </Pressable>
 
-            <Pressable onPress={() => !loading && setIsLogin(!isLogin)}>
-              <Text style={styles.toggleText}>
-                {isLogin ? 'No account? Sign up here' : 'Already have an account? Login'}
-              </Text>
-            </Pressable>
+            {!forgotPasswordMode && (
+              <Pressable onPress={() => !loading && setIsLogin(!isLogin)}>
+                <Text style={styles.toggleText}>
+                  {isLogin ? "No account? Sign up here" : "Already have an account? Login"}
+                </Text>
+              </Pressable>
+            )}
+
+            {isLogin && !forgotPasswordMode && (
+              <Pressable onPress={() => !loading && setForgotPasswordMode(true)}>
+                <Text style={styles.toggleText}>Forgot Password?</Text>
+              </Pressable>
+            )}
+
+            {forgotPasswordMode && (
+              <Pressable onPress={() => !loading && setForgotPasswordMode(false)}>
+                <Text style={styles.toggleText}>Back to Login</Text>
+              </Pressable>
+            )}
           </View>
         </ScrollView>
       </TouchableWithoutFeedback>
@@ -179,7 +202,7 @@ const styles = StyleSheet.create({
   btn: {
     backgroundColor: 'green',
     padding: 15,
-    width: 150,
+    width: 200,
     alignItems: "center",
     borderRadius: 30,
   },

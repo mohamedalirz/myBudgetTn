@@ -1,34 +1,35 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
-import { loadData } from '../backend/storage';
-import { useIsFocused } from '@react-navigation/native';
-import translations from '../backend/translations';
+import React, { useState, useEffect } from 'react'
+import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native'
+import { useIsFocused } from '@react-navigation/native'
+import translations from '../backend/translations'
 
 export default function ObjectivesScreen({ navigation }) {
-  const [objectives, setObjectives] = useState([]);
-  const [language, setLanguage] = useState('english');
-  const isFocused = useIsFocused();
+  const [objectives, setObjectives] = useState([])
+  const [language, setLanguage] = useState('english')
+  const isFocused = useIsFocused()
 
-  const t = translations[language] || translations['english'];
+  const t = translations[language] || translations['english']
 
   useEffect(() => {
     const loadObjectives = async () => {
-      const savedObjectives = await loadData('objectives');
-      const lang = await loadData('language');
-
-      if (lang === 'ar') setLanguage('arabic');
-      else if (lang === 'fr') setLanguage('french');
-      else setLanguage('english');
-
-      if (savedObjectives) {
-        setObjectives(savedObjectives);
+      try {
+        const response = await fetch('https://your-backend-api.com/api/objectives')
+        if (!response.ok) throw new Error('Failed to fetch objectives')
+        const data = await response.json()
+        setObjectives(data)
+        const langResponse = await fetch('https://your-backend-api.com/api/user-language')
+        if (langResponse.ok) {
+          const langData = await langResponse.json()
+          if (langData === 'ar') setLanguage('arabic')
+          else if (langData === 'fr') setLanguage('french')
+          else setLanguage('english')
+        }
+      } catch (error) {
+        console.error(error)
       }
-    };
-
-    if (isFocused) {
-      loadObjectives();
     }
-  }, [isFocused]);
+    if (isFocused) loadObjectives()
+  }, [isFocused])
 
   return (
     <View style={styles.container}>
@@ -44,26 +45,27 @@ export default function ObjectivesScreen({ navigation }) {
               {goal.current.toFixed(2)} / {goal.target.toFixed(2)} DT
             </Text>
             <View style={styles.progressContainer}>
-              <View style={[
-                styles.progressBar,
-                {
-                  width: `${Math.min(100, (goal.current / goal.target) * 100)}%`,
-                  backgroundColor: goal.current >= goal.target ? '#4CAF50' : '#FFA000'
-                }
-              ]} />
+              <View
+                style={[
+                  styles.progressBar,
+                  {
+                    width: `${Math.min(100, (goal.current / goal.target) * 100)}%`,
+                    backgroundColor: goal.current >= goal.target ? '#4CAF50' : '#FFA000',
+                  },
+                ]}
+              />
             </View>
           </Pressable>
         ))}
       </ScrollView>
-
-      <Pressable 
+      <Pressable
         style={styles.addButton}
         onPress={() => navigation.navigate('AddObjective')}
       >
         <Text style={styles.addButtonText}>+ {t.addGoal}</Text>
       </Pressable>
     </View>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -122,4 +124,4 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
-});
+})

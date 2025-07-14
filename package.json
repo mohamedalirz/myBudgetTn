@@ -2,9 +2,9 @@
   "name": "mybudgettn",
   "license": "0BSD",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
-    "start": "expo start --dev-client",
+    "start": "node index.js",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web"
@@ -15,6 +15,7 @@
     "@react-native-picker/picker": "^2.11.1",
     "@react-navigation/native": "^7.1.14",
     "@react-navigation/native-stack": "^7.3.21",
+    "axios": "^1.10.0",
     "expo": "~53.0.17",
     "expo-status-bar": "~2.2.3",
     "react": "19.0.0",
@@ -26,6 +27,5 @@
     "@babel/core": "^7.20.0",
     "@react-native-community/cli": "latest"
   },
-  
   "private": true
 }
