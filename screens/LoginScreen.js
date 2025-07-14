@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import axios from 'axios';
 
-const API_URL = 'https://mybudgettn-1.onrender.com/api/auth'; 
+const API_URL = 'https://mybudgettn-1.onrender.com/api'; 
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
